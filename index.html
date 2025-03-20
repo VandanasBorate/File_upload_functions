@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Upload</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f4f9;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: #fff;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 28px;
+      color: #333;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    label {
+      display: block;
+      font-size: 16px;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      text-align: left;
+    }
+
+    input[type="text"], input[type="file"] {
+      display: block;
+      margin: 10px 0 20px;
+      padding: 10px;
+      width: 100%;
+      max-width: 300px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .input-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      width: 100%;
+    }
+
+    label {
+      text-align: left;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      padding: 12px 24px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      margin-top: 20px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .response {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #333;
+      display: none;
+    }
+
+    .success {
+      color: #28a745;
+    }
+
+    .error {
+      color: #dc3545;
+    }
+
+    .loading {
+      font-size: 18px;
+      color: #007bff;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Upload a File</h2>
+    <form id="fileUploadForm" enctype="multipart/form-data">
+      <div class="input-container">
+        <label for="usernameInput">Enter a username</label>
+        <input type="text" id="usernameInput" name="username" required placeholder="Enter username">
+      </div>
+
+      <div class="input-container">
+        <label for="fileInput">Choose a file</label>
+        <input type="file" id="fileInput" name="file" required>
+      </div>
+      
+      <button type="button" onclick="uploadFile()">Upload File</button>
+
+      <div class="loading" id="loadingMessage">Uploading... Please wait...</div>
+      <div class="response" id="responseMessage"></div>
+    </form>
+    <button id="createVMButton" style="display:none" onclick="createVM()">Create VM</button>
+    <div class="loading" id="vmLoadingMessage" style="display:none">Creating VM... Please wait...</div>
+  </div>
+
+  <script>
+    let fileName = '';
+    let username = '';
+
+    function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const usernameInput = document.getElementById("usernameInput");
+      const responseMessage = document.getElementById("responseMessage");
+      const loadingMessage = document.getElementById("loadingMessage");
+      const createVMButton = document.getElementById("createVMButton");
+      const vmLoadingMessage = document.getElementById("vmLoadingMessage");
+      
+      responseMessage.style.display = "none";
+      loadingMessage.style.display = "none";
+
+      if (fileInput.files.length === 0) {
+        responseMessage.textContent = "Please select a file to upload.";
+        responseMessage.style.color = "red";
+        responseMessage.style.display = "block";
+        return;
+      }
+
+      if (!usernameInput.value) {
+        responseMessage.textContent = "Please enter a username.";
+        responseMessage.style.color = "red";
+        responseMessage.style.display = "block";
+        return;
+      }
+
+      loadingMessage.style.display = "block";
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+      formData.append("username", usernameInput.value);
+
+      fetch('/upload_file', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        loadingMessage.style.display = "none";
+        responseMessage.style.display = "block";
+
+        if (data.status === 'success') {
+          fileName = data.file_name;
+          username = data.username;
+
+          responseMessage.textContent = `File uploaded successfully: ${data.message}`;
+          responseMessage.classList.add("success");
+          responseMessage.classList.remove("error");
+
+          // Show VM creation button
+          createVMButton.style.display = "inline-block";
+        } else {
+          responseMessage.textContent = `Error: ${data.message}`;
+          responseMessage.classList.add("error");
+          responseMessage.classList.remove("success");
+        }
+      })
+      .catch(error => {
+        loadingMessage.style.display = "none";
+        responseMessage.style.display = "block";
+        responseMessage.textContent = "An error occurred during the upload.";
+        responseMessage.classList.add("error");
+        responseMessage.classList.remove("success");
+      });
+    }
+
+    function createVM() {
+      const createVMButton = document.getElementById("createVMButton");
+      const responseMessage = document.getElementById("responseMessage");
+      const vmLoadingMessage = document.getElementById("vmLoadingMessage");
+
+      // Show loading message for VM creation
+      vmLoadingMessage.style.display = "block";
+      responseMessage.style.display = "none";
+
+      // Create VM logic
+      const formData = new FormData();
+      formData.append("file_name", fileName);
+      formData.append("username", username);
+
+      fetch('/create_vm', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        vmLoadingMessage.style.display = "none";
+        responseMessage.style.display = "block";
+
+        if (data.status === 'success') {
+          responseMessage.textContent = `VM creation started: ${data.message}`;
+          responseMessage.classList.add("success");
+          responseMessage.classList.remove("error");
+        } else {
+          responseMessage.textContent = `Error: ${data.message}`;
+          responseMessage.classList.add("error");
+          responseMessage.classList.remove("success");
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
